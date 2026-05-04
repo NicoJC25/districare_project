@@ -1,0 +1,31 @@
+[project]
+name = "districare-project"
+version = "0.1.0"
+description = "Base distribuida para DistriCare: emergencias, ambulancias simuladas, eventos, IA heuristica y asignacion unica."
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.13.0",
+  "fastapi>=0.110.0",
+  "httpx>=0.27.0",
+  "pika>=1.3.2",
+  "psycopg[binary]>=3.1.0",
+  "pydantic-settings>=2.2.0",
+  "sqlalchemy>=2.0.0",
+  "uvicorn[standard]>=0.29.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []

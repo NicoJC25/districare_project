@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: districare-postgres
+    environment:
+      POSTGRES_DB: districare
+      POSTGRES_USER: districare
+      POSTGRES_PASSWORD: districare
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - districare-postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: districare-rabbitmq
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15673:15672"
+
+volumes:
+  districare-postgres-data:
