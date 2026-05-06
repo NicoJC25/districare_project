@@ -8,6 +8,7 @@ Base inicial distribuida para el proyecto de Sistemas Distribuidos.
 - `simulator`: nodos de ambulancia como procesos separados con heartbeat y consumo de eventos.
 - `infrastructure`: PostgreSQL y RabbitMQ para desarrollo local.
 - `docs/fase_1`: notas del modelo inicial y la simulacion distribuida.
+- `docs/fase_2`: eventos, nodos de ambulancia, heartbeat y trazabilidad de fase.
 
 ## Inicio rapido
 
@@ -48,8 +49,10 @@ python scripts/run_ambulance_node.py --code AMB-B --location "5,3"
 pytest
 ```
 
-## Guias de fase 1
+## Guias de fase
 
 - [Modelo inicial](docs/fase_1/modelo_inicial.md)
 - [Trazabilidad de creacion](docs/fase_1/trazabilidad_creacion.md)
 - [Servicio de emergencias y consumo API](docs/fase_1/servicio_emergencias_api.md)
+- [Fase 2: eventos, nodos y heartbeat](docs/fase_2/fase_2.md)
+- [Trazabilidad fase 2](docs/fase_2/trazabilidad_fase_2.md)

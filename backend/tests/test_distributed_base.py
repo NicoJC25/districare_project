@@ -7,6 +7,7 @@ from app.domain.enums import AmbulanceState, AssignmentState, EmergencyState, Ev
 from app.models.ambulance import AmbulanceNode
 from app.models.assignment import Assignment
 from app.models.event import SystemEvent
+from app.messaging.rabbitmq import RabbitMQPublisher
 
 
 def create_ambulance(client, code="AMB-A", location="0,0", load=0, reliability=1.0):
@@ -36,7 +37,13 @@ def event_types(db_session):
     return set(db_session.scalars(select(SystemEvent.event_type)).all())
 
 
-def test_create_emergency_records_events_and_recommendation(client, db_session):
+def test_create_emergency_records_events_recommendation_and_publishes_payload(client, db_session, monkeypatch):
+    published = {}
+    monkeypatch.setattr(
+        RabbitMQPublisher,
+        "publish",
+        lambda self, routing_key, payload: published.update({"routing_key": routing_key, "payload": payload}) or True,
+    )
     ambulance = create_ambulance(client, "AMB-A", "0,0")
     emergency = create_emergency(client)
 
@@ -46,6 +53,16 @@ def test_create_emergency_records_events_and_recommendation(client, db_session):
     assert EventType.EMERGENCY_CREATED.value in event_types(db_session)
     assert EventType.EMERGENCY_PRIORITIZED.value in event_types(db_session)
     assert EventType.EMERGENCY_PUBLISHED.value in event_types(db_session)
+    assert published["routing_key"] == "emergency.prioritized"
+    assert published["payload"] == {
+        "event": EventType.EMERGENCY_PUBLISHED.value,
+        "emergency_id": emergency["id"],
+        "type": emergency["type"],
+        "severity": emergency["severity"],
+        "simulated_location": emergency["simulated_location"],
+        "recommended_ambulance_id": ambulance["id"],
+        "priority": emergency["priority"],
+    }
 
 
 def test_heartbeat_updates_node_and_records_event(client, db_session):
@@ -69,7 +86,7 @@ def test_detect_stale_node_marks_failure(client, db_session):
     assert response.status_code == 200
     assert response.json()["detected_failures"] == 1
     db_session.refresh(node)
-    assert node.state == AmbulanceState.INACTIVA.value
+    assert node.state == AmbulanceState.FALLIDO.value
     assert EventType.NODE_FAILED.value in event_types(db_session)
 
 
@@ -80,7 +97,7 @@ def test_recover_node_records_event(client, db_session):
     response = client.post(f"/ambulances/{ambulance['id']}/recover")
 
     assert response.status_code == 200
-    assert response.json()["state"] == AmbulanceState.RECUPERADA.value
+    assert response.json()["state"] == AmbulanceState.DISPONIBLE.value
     assert EventType.NODE_RECOVERED.value in event_types(db_session)
 
 
@@ -100,6 +117,9 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
 
     assert first["accepted"] is True
     assert second["accepted"] is False
+    assert first["assignment"]["ambulance_id"] == ambulance_a["id"]
+    db_session.refresh(db_session.get(AmbulanceNode, ambulance_a["id"]))
+    assert db_session.get(AmbulanceNode, ambulance_a["id"]).state == AmbulanceState.OCUPADO.value
     confirmed = db_session.scalars(
         select(Assignment).where(
             Assignment.emergency_id == emergency["id"],
@@ -134,6 +154,75 @@ def test_assigned_node_failure_triggers_automatic_reassignment(client, db_sessio
     assert active_assignment is not None
     assert active_assignment.ambulance_id == ambulance_b["id"]
     refreshed_b = db_session.get(AmbulanceNode, ambulance_b["id"])
-    assert refreshed_b.state == AmbulanceState.ASIGNADA.value
+    assert refreshed_b.state == AmbulanceState.OCUPADO.value
     assert EventType.REASSIGNMENT_STARTED.value in event_types(db_session)
     assert EventType.REASSIGNMENT_CONFIRMED.value in event_types(db_session)
+
+
+def test_node_event_endpoint_records_received_and_processed_events(client, db_session):
+    ambulance = create_ambulance(client)
+    emergency = create_emergency(client)
+
+    received = client.post(
+        f"/ambulances/{ambulance['id']}/node-events",
+        json={
+            "stage": "received",
+            "emergency_id": emergency["id"],
+            "decision": "received",
+            "result": "received",
+            "payload": {"emergency_id": emergency["id"]},
+        },
+    )
+    processed = client.post(
+        f"/ambulances/{ambulance['id']}/node-events",
+        json={
+            "stage": "processed",
+            "emergency_id": emergency["id"],
+            "decision": "ignored",
+            "result": "not_recommended",
+            "detail": "La emergencia no fue recomendada para este nodo.",
+            "payload": {"emergency_id": emergency["id"]},
+        },
+    )
+
+    assert received.status_code == 201
+    assert received.json()["event_type"] == EventType.NODE_EVENT_RECEIVED.value
+    assert processed.status_code == 201
+    assert processed.json()["event_type"] == EventType.NODE_EVENT_PROCESSED.value
+    assert EventType.NODE_EVENT_RECEIVED.value in event_types(db_session)
+    assert EventType.NODE_EVENT_PROCESSED.value in event_types(db_session)
+
+
+def test_events_endpoint_exposes_published_received_and_processed_events(client):
+    ambulance = create_ambulance(client)
+    emergency = create_emergency(client)
+    client.post(
+        f"/ambulances/{ambulance['id']}/node-events",
+        json={"stage": "received", "emergency_id": emergency["id"], "decision": "received"},
+    )
+    client.post(
+        f"/ambulances/{ambulance['id']}/node-events",
+        json={"stage": "processed", "emergency_id": emergency["id"], "decision": "attempted", "result": "accepted"},
+    )
+
+    events = client.get("/events").json()
+    exposed_types = {event["event_type"] for event in events}
+
+    assert EventType.EMERGENCY_PUBLISHED.value in exposed_types
+    assert EventType.NODE_EVENT_RECEIVED.value in exposed_types
+    assert EventType.NODE_EVENT_PROCESSED.value in exposed_types
+
+
+def test_assignments_endpoint_lists_confirmed_assignments(client):
+    ambulance = create_ambulance(client)
+    emergency = create_emergency(client)
+    client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": ambulance["id"]},
+    )
+
+    assignments = client.get("/assignments").json()
+
+    assert len(assignments) == 1
+    assert assignments[0]["emergency_id"] == emergency["id"]
+    assert assignments[0]["ambulance_id"] == ambulance["id"]

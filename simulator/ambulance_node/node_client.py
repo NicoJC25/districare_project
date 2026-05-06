@@ -60,3 +60,29 @@ class AmbulanceNodeClient:
         )
         response.raise_for_status()
         return response.json()
+
+    def report_node_event(
+        self,
+        stage: str,
+        emergency_id: str | None,
+        *,
+        decision: str | None = None,
+        result: str | None = None,
+        detail: str | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        if not self.ambulance_id:
+            self.register()
+        response = httpx.post(
+            f"{self.api_url}/ambulances/{self.ambulance_id}/node-events",
+            json={
+                "stage": stage,
+                "emergency_id": emergency_id,
+                "decision": decision,
+                "result": result,
+                "detail": detail,
+                "payload": payload or {},
+            },
+            timeout=5,
+        )
+        response.raise_for_status()

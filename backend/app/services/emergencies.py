@@ -31,6 +31,9 @@ class EmergencyService:
             {
                 "event": EventType.EMERGENCY_PUBLISHED.value,
                 "emergency_id": emergency.id,
+                "type": emergency.type,
+                "severity": emergency.severity,
+                "simulated_location": emergency.simulated_location,
                 "recommended_ambulance_id": recommendation.recommended_ambulance_id,
                 "priority": emergency.priority,
             },

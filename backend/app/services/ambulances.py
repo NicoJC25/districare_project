@@ -7,6 +7,7 @@ from app.domain.enums import AmbulanceState, EventType, FailureRecoveryState
 from app.models.ambulance import AmbulanceNode
 from app.models.failure import NodeFailure
 from app.schemas.ambulance import AmbulanceCreate
+from app.schemas.event import NodeEventCreate
 from app.services.events import EventService
 
 
@@ -34,9 +35,9 @@ class AmbulanceService:
         if ambulance is None:
             raise ValueError("Ambulancia no encontrada")
 
-        was_inactive = ambulance.state == AmbulanceState.INACTIVA.value
+        was_inactive = ambulance.state in [AmbulanceState.INACTIVO.value, AmbulanceState.FALLIDO.value]
         ambulance.last_heartbeat_at = datetime.now(UTC)
-        ambulance.state = AmbulanceState.RECUPERADA.value if was_inactive else ambulance.state
+        ambulance.state = AmbulanceState.DISPONIBLE.value if was_inactive else ambulance.state
         self.events.record(
             EventType.HEARTBEAT_RECEIVED,
             f"Heartbeat recibido desde {ambulance.code}.",
@@ -65,7 +66,7 @@ class AmbulanceService:
         ambulance = self.db.get(AmbulanceNode, ambulance_id)
         if ambulance is None:
             raise ValueError("Ambulancia no encontrada")
-        ambulance.state = AmbulanceState.RECUPERADA.value
+        ambulance.state = AmbulanceState.DISPONIBLE.value
         ambulance.last_heartbeat_at = datetime.now(UTC)
         self.events.record(
             EventType.NODE_RECOVERED,
@@ -73,3 +74,33 @@ class AmbulanceService:
             ambulance_id=ambulance.id,
         )
         return ambulance
+
+    def report_node_event(self, ambulance_id: str, payload: NodeEventCreate):
+        ambulance = self.db.get(AmbulanceNode, ambulance_id)
+        if ambulance is None:
+            raise ValueError("Ambulancia no encontrada")
+
+        stage = payload.stage.lower()
+        event_type = (
+            EventType.NODE_EVENT_RECEIVED
+            if stage == "received"
+            else EventType.NODE_EVENT_PROCESSED
+        )
+        description = (
+            f"Nodo {ambulance.code} recibio evento de emergencia."
+            if event_type == EventType.NODE_EVENT_RECEIVED
+            else f"Nodo {ambulance.code} proceso evento de emergencia."
+        )
+        return self.events.record(
+            event_type,
+            description,
+            emergency_id=payload.emergency_id,
+            ambulance_id=ambulance.id,
+            metadata={
+                "stage": payload.stage,
+                "decision": payload.decision,
+                "result": payload.result,
+                "detail": payload.detail,
+                "payload": payload.payload or {},
+            },
+        )

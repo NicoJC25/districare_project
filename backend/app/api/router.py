@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.ambulance import AmbulanceNode
+from app.models.assignment import Assignment
 from app.models.emergency import Emergency
 from app.models.event import SystemEvent
 from app.models.recommendation import AIRecommendation
 from app.schemas.ambulance import AmbulanceCreate, AmbulanceRead, HeartbeatRead
-from app.schemas.assignment import AssignmentAttemptCreate, AssignmentAttemptRead
+from app.schemas.assignment import AssignmentAttemptCreate, AssignmentAttemptRead, AssignmentRead
 from app.schemas.emergency import EmergencyCreate, EmergencyRead
-from app.schemas.event import SystemEventRead
+from app.schemas.event import NodeEventCreate, SystemEventRead
 from app.schemas.recommendation import AIRecommendationRead
 from app.services.ambulances import AmbulanceService
 from app.services.assignments import AssignmentService
@@ -99,6 +100,21 @@ def recover_ambulance(ambulance_id: str, db: Session = Depends(get_db)) -> Ambul
     return ambulance
 
 
+@router.post("/ambulances/{ambulance_id}/node-events", response_model=SystemEventRead, status_code=201)
+def report_node_event(
+    ambulance_id: str,
+    payload: NodeEventCreate,
+    db: Session = Depends(get_db),
+) -> SystemEvent:
+    try:
+        event = AmbulanceService(db).report_node_event(ambulance_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(event)
+    return event
+
+
 @router.post("/assignments/attempt", response_model=AssignmentAttemptRead)
 def attempt_assignment(payload: AssignmentAttemptCreate, db: Session = Depends(get_db)) -> dict:
     accepted, assignment, reason = AssignmentService(db).attempt_assignment(
@@ -107,6 +123,11 @@ def attempt_assignment(payload: AssignmentAttemptCreate, db: Session = Depends(g
     )
     db.commit()
     return {"accepted": accepted, "assignment": assignment, "reason": reason}
+
+
+@router.get("/assignments", response_model=list[AssignmentRead])
+def list_assignments(db: Session = Depends(get_db)) -> list[Assignment]:
+    return list(db.scalars(select(Assignment).order_by(Assignment.assigned_at.desc())).all())
 
 
 @router.post("/failures/detect-stale")

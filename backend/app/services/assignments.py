@@ -29,14 +29,14 @@ class AssignmentService:
             ambulance_id=ambulance.id,
         )
 
-        if ambulance.state == AmbulanceState.INACTIVA.value:
+        if ambulance.state in [AmbulanceState.INACTIVO.value, AmbulanceState.FALLIDO.value]:
             self.events.record(
                 EventType.ASSIGNMENT_REJECTED,
-                "Intento rechazado: nodo inactivo.",
+                "Intento rechazado: nodo inactivo o fallido.",
                 emergency_id=emergency.id,
                 ambulance_id=ambulance.id,
             )
-            return False, None, "Nodo inactivo"
+            return False, None, "Nodo inactivo o fallido"
 
         active_assignment = self.db.scalar(
             select(Assignment).where(
@@ -62,7 +62,7 @@ class AssignmentService:
             active=True,
         )
         emergency.state = EmergencyState.ASIGNADA.value
-        ambulance.state = AmbulanceState.ASIGNADA.value
+        ambulance.state = AmbulanceState.OCUPADO.value
         self.db.add(assignment)
         try:
             self.db.flush()

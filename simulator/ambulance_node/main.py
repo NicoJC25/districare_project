@@ -42,10 +42,33 @@ def consume_events(client: AmbulanceNodeClient, accept_all: bool) -> None:
     def on_message(ch, method, properties, body):
         payload = json.loads(body.decode("utf-8"))
         emergency_id = payload["emergency_id"]
+        client.report_node_event(
+            "received",
+            emergency_id,
+            decision="received",
+            result="received",
+            payload=payload,
+        )
         if should_attempt(payload, client.ambulance_id, accept_all):
             result = client.attempt_assignment(emergency_id)
+            client.report_node_event(
+                "processed",
+                emergency_id,
+                decision="attempted",
+                result="accepted" if result.get("accepted") else "rejected",
+                detail=result.get("reason"),
+                payload=payload,
+            )
             logger.info("Intento de asignacion para %s: %s", emergency_id, result)
         else:
+            client.report_node_event(
+                "processed",
+                emergency_id,
+                decision="ignored",
+                result="not_recommended",
+                detail="La emergencia no fue recomendada para este nodo.",
+                payload=payload,
+            )
             logger.info("Emergencia %s recibida pero no recomendada para este nodo.", emergency_id)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

@@ -23,7 +23,7 @@ class FailureService:
         threshold = datetime.now(UTC) - timedelta(seconds=settings.heartbeat_timeout_seconds)
         nodes = self.db.scalars(
             select(AmbulanceNode).where(
-                AmbulanceNode.state != AmbulanceState.INACTIVA.value,
+                AmbulanceNode.state != AmbulanceState.FALLIDO.value,
                 AmbulanceNode.last_heartbeat_at.is_not(None),
                 AmbulanceNode.last_heartbeat_at < threshold,
             )
@@ -35,7 +35,7 @@ class FailureService:
         if ambulance is None:
             raise ValueError("Ambulancia no encontrada")
 
-        ambulance.state = AmbulanceState.INACTIVA.value
+        ambulance.state = AmbulanceState.FALLIDO.value
         failure = NodeFailure(
             ambulance_id=ambulance.id,
             failure_type=failure_type,
