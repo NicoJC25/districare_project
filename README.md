@@ -47,3 +47,9 @@ python scripts/run_ambulance_node.py --code AMB-B --location "5,3"
 ```powershell
 pytest
 ```
+
+## Guias de fase 1
+
+- [Modelo inicial](docs/fase_1/modelo_inicial.md)
+- [Trazabilidad de creacion](docs/fase_1/trazabilidad_creacion.md)
+- [Servicio de emergencias y consumo API](docs/fase_1/servicio_emergencias_api.md)
