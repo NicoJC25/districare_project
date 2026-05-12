@@ -16,6 +16,7 @@ class EmergencyRead(BaseModel):
     priority: int | None
     simulated_location: str
     state: str
+    assigned_ambulance_id: str | None
     created_at: datetime
     closed_at: datetime | None
 

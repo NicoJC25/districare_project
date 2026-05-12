@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.domain.enums import AmbulanceState, AssignmentState, EmergencyState, EventType
 from app.models.ambulance import AmbulanceNode
 from app.models.assignment import Assignment
+from app.models.emergency import Emergency
 from app.models.event import SystemEvent
 from app.messaging.rabbitmq import RabbitMQPublisher
 
@@ -118,6 +119,9 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
     assert first["accepted"] is True
     assert second["accepted"] is False
     assert first["assignment"]["ambulance_id"] == ambulance_a["id"]
+    emergency_row = db_session.get(Emergency, emergency["id"])
+    assert emergency_row.state == EmergencyState.ASIGNADA.value
+    assert emergency_row.assigned_ambulance_id == ambulance_a["id"]
     db_session.refresh(db_session.get(AmbulanceNode, ambulance_a["id"]))
     assert db_session.get(AmbulanceNode, ambulance_a["id"]).state == AmbulanceState.OCUPADO.value
     confirmed = db_session.scalars(
@@ -129,6 +133,33 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
     ).all()
     assert len(confirmed) == 1
     assert EventType.ASSIGNMENT_REJECTED.value in event_types(db_session)
+
+
+def test_assignment_rejects_ambulance_with_active_assignment(client, db_session):
+    ambulance = create_ambulance(client, "AMB-A", "0,0")
+    emergency_a = create_emergency(client, location="0,0")
+    emergency_b = create_emergency(client, location="2,2")
+
+    first = client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency_a["id"], "ambulance_id": ambulance["id"]},
+    ).json()
+    second = client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency_b["id"], "ambulance_id": ambulance["id"]},
+    ).json()
+
+    assert first["accepted"] is True
+    assert second == {"accepted": False, "assignment": None, "reason": "Nodo ya asignado"}
+    assert db_session.get(Emergency, emergency_b["id"]).assigned_ambulance_id is None
+    confirmed = db_session.scalars(
+        select(Assignment).where(
+            Assignment.ambulance_id == ambulance["id"],
+            Assignment.active.is_(True),
+            Assignment.state == AssignmentState.CONFIRMADA.value,
+        )
+    ).all()
+    assert len(confirmed) == 1
 
 
 def test_assigned_node_failure_triggers_automatic_reassignment(client, db_session):
@@ -153,6 +184,7 @@ def test_assigned_node_failure_triggers_automatic_reassignment(client, db_sessio
     )
     assert active_assignment is not None
     assert active_assignment.ambulance_id == ambulance_b["id"]
+    assert db_session.get(Emergency, emergency["id"]).assigned_ambulance_id == ambulance_b["id"]
     refreshed_b = db_session.get(AmbulanceNode, ambulance_b["id"])
     assert refreshed_b.state == AmbulanceState.OCUPADO.value
     assert EventType.REASSIGNMENT_STARTED.value in event_types(db_session)

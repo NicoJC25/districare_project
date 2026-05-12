@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -17,9 +17,15 @@ class Emergency(Base):
     priority: Mapped[int | None] = mapped_column(Integer, nullable=True)
     simulated_location: Mapped[str] = mapped_column(String(120), nullable=False)
     state: Mapped[str] = mapped_column(String(40), default=EmergencyState.REGISTRADA.value, nullable=False)
+    assigned_ambulance_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ambulance_nodes.id"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = utc_created_at()
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     assignments = relationship("Assignment", back_populates="emergency")
+    assigned_ambulance = relationship("AmbulanceNode", foreign_keys=[assigned_ambulance_id])
     recommendations = relationship("AIRecommendation", back_populates="emergency")
     events = relationship("SystemEvent", back_populates="emergency")

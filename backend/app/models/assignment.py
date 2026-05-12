@@ -37,3 +37,17 @@ Index(
         Assignment.state == AssignmentState.CONFIRMADA.value,
     ),
 )
+
+Index(
+    "uq_active_confirmed_assignment_per_ambulance",
+    Assignment.ambulance_id,
+    unique=True,
+    postgresql_where=and_(
+        Assignment.active.is_(True),
+        Assignment.state == AssignmentState.CONFIRMADA.value,
+    ),
+    sqlite_where=and_(
+        Assignment.active.is_(True),
+        Assignment.state == AssignmentState.CONFIRMADA.value,
+    ),
+)

@@ -62,6 +62,7 @@ def upgrade() -> None:
         ["emergency_id"],
         unique=True,
         postgresql_where=sa.text("active IS TRUE AND state = 'CONFIRMADA'"),
+        sqlite_where=sa.text("active IS TRUE AND state = 'CONFIRMADA'"),
     )
     op.create_table(
         "ai_recommendations",
