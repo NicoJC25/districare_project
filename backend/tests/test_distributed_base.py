@@ -38,6 +38,10 @@ def event_types(db_session):
     return set(db_session.scalars(select(SystemEvent.event_type)).all())
 
 
+def latest_recommendation(client):
+    return client.get("/recommendations").json()[0]
+
+
 def test_create_emergency_records_events_recommendation_and_publishes_payload(client, db_session, monkeypatch):
     published = {}
     monkeypatch.setattr(
@@ -64,6 +68,85 @@ def test_create_emergency_records_events_recommendation_and_publishes_payload(cl
         "recommended_ambulance_id": ambulance["id"],
         "priority": emergency["priority"],
     }
+
+
+def test_heuristic_recommendation_prefers_nearest_equivalent_ambulance(client):
+    far = create_ambulance(client, "AMB-FAR", "30,0")
+    near = create_ambulance(client, "AMB-NEAR", "2,0")
+
+    create_emergency(client, severity=7, location="0,0")
+
+    recommendation = latest_recommendation(client)
+    assert recommendation["recommended_ambulance_id"] == near["id"]
+    assert recommendation["criteria"]["selected"]["ambulance_id"] == near["id"]
+    assert recommendation["criteria"]["ranking"][0]["ambulance_id"] == near["id"]
+    assert recommendation["criteria"]["ranking"][1]["ambulance_id"] == far["id"]
+
+
+def test_heuristic_recommendation_balances_reliability_and_operational_load(client):
+    overloaded = create_ambulance(client, "AMB-OVERLOADED", "0,0", load=10, reliability=0.2)
+    balanced = create_ambulance(client, "AMB-BALANCED", "10,0", load=0, reliability=1.0)
+
+    create_emergency(client, severity=7, location="0,0")
+
+    recommendation = latest_recommendation(client)
+    assert recommendation["recommended_ambulance_id"] == balanced["id"]
+    ranking = recommendation["criteria"]["ranking"]
+    overloaded_item = next(item for item in ranking if item["ambulance_id"] == overloaded["id"])
+    balanced_item = next(item for item in ranking if item["ambulance_id"] == balanced["id"])
+    assert balanced_item["weighted_scores"]["operational_load"] > overloaded_item["weighted_scores"]["operational_load"]
+    assert balanced_item["weighted_scores"]["reliability"] > overloaded_item["weighted_scores"]["reliability"]
+
+
+def test_heuristic_recommendation_penalizes_recovered_availability(client, db_session):
+    recovered = create_ambulance(client, "AMB-RECOVERED", "0,0")
+    available = create_ambulance(client, "AMB-AVAILABLE", "0,0")
+    recovered_node = db_session.get(AmbulanceNode, recovered["id"])
+    recovered_node.state = AmbulanceState.RECUPERADA.value
+    db_session.commit()
+
+    create_emergency(client, severity=7, location="0,0")
+
+    recommendation = latest_recommendation(client)
+    ranking = recommendation["criteria"]["ranking"]
+    recovered_item = next(item for item in ranking if item["ambulance_id"] == recovered["id"])
+    available_item = next(item for item in ranking if item["ambulance_id"] == available["id"])
+    assert recommendation["recommended_ambulance_id"] == available["id"]
+    assert available_item["normalized_scores"]["availability"] == 100.0
+    assert recovered_item["normalized_scores"]["availability"] == 85.0
+
+
+def test_heuristic_criteria_exposes_all_required_scores(client):
+    create_ambulance(client, "AMB-A", "0,0")
+
+    create_emergency(client, severity=8, location="1,1")
+
+    criteria = latest_recommendation(client)["criteria"]
+    expected_criteria = {
+        "severity",
+        "distance",
+        "availability",
+        "operational_load",
+        "reliability",
+        "waiting_time",
+    }
+    assert set(criteria["weights"]) == expected_criteria
+    assert set(criteria["ranking"][0]["normalized_scores"]) == expected_criteria
+    assert set(criteria["ranking"][0]["weighted_scores"]) == expected_criteria
+    assert criteria["selected"] == criteria["ranking"][0]
+    assert criteria["no_candidate_reason"] is None
+
+
+def test_heuristic_recommendation_records_no_candidate_reason(client):
+    create_emergency(client, severity=9, location="1,1")
+
+    recommendation = latest_recommendation(client)
+    assert recommendation["recommended_ambulance_id"] is None
+    assert recommendation["criteria"]["ranking"] == []
+    assert recommendation["criteria"]["selected"] is None
+    assert recommendation["criteria"]["no_candidate_reason"] == (
+        "No hay ambulancias disponibles o recuperadas para recomendar."
+    )
 
 
 def test_heartbeat_updates_node_and_records_event(client, db_session):
