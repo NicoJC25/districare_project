@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -15,8 +15,11 @@ class AIRecommendation(Base):
     recommended_ambulance_id: Mapped[str | None] = mapped_column(ForeignKey("ambulance_nodes.id"), nullable=True)
     calculated_priority: Mapped[int] = mapped_column(Integer, nullable=False)
     total_score: Mapped[float] = mapped_column(Float, nullable=False)
+    decision_reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    candidates_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     criteria: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = utc_created_at()
 
     emergency = relationship("Emergency", back_populates="recommendations")
     recommended_ambulance = relationship("AmbulanceNode", back_populates="recommendations")
+    assignments = relationship("Assignment", back_populates="recommendation")

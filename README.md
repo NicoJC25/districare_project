@@ -9,7 +9,7 @@ Base inicial distribuida para el proyecto de Sistemas Distribuidos.
 - `infrastructure`: PostgreSQL y RabbitMQ para desarrollo local.
 - `docs/fase_1`: notas del modelo inicial y la simulacion distribuida.
 - `docs/fase_2`: eventos, nodos de ambulancia, heartbeat y trazabilidad de fase.
-- `docs/fase_4`: extension de IA heuristica auditable para recomendaciones.
+- `docs/fase_4`: extension de IA heuristica auditable, ranking y trazabilidad de recomendaciones.
 
 ## Inicio rapido
 
@@ -58,3 +58,4 @@ pytest
 - [Fase 2: eventos, nodos y heartbeat](docs/fase_2/fase_2.md)
 - [Trazabilidad fase 2](docs/fase_2/trazabilidad_fase_2.md)
 - [Extension IA heuristica](docs/fase_4/heuristica_ia.md)
+- [Trazabilidad de recomendaciones](docs/fase_4/trazabilidad_recomendaciones.md)

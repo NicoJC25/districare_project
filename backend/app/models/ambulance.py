@@ -21,7 +21,7 @@ class AmbulanceNode(Base):
     last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = utc_created_at()
 
-    assignments = relationship("Assignment", back_populates="ambulance")
+    assignments = relationship("Assignment", foreign_keys="Assignment.ambulance_id", back_populates="ambulance")
     recommendations = relationship("AIRecommendation", back_populates="recommended_ambulance")
     events = relationship("SystemEvent", back_populates="ambulance")
     failures = relationship("NodeFailure", back_populates="ambulance")

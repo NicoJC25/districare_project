@@ -78,22 +78,32 @@ class RecommendationService:
         )
         best = ranked[0] if ranked else None
         criteria = self._build_criteria(emergency, priority, waiting_score, ranked, best)
+        decision_reason = self._decision_reason(best)
         recommendation = AIRecommendation(
             emergency_id=emergency.id,
             recommended_ambulance_id=best["ambulance"].id if best else None,
             calculated_priority=priority,
             total_score=round(best["total_score"], 2) if best else self._emergency_only_score(priority, waiting_score),
+            decision_reason=decision_reason,
+            candidates_count=len(ranked),
             criteria=criteria,
+            created_at=datetime.now(UTC),
         )
         emergency.priority = priority
         emergency.state = EmergencyState.PRIORIZADA.value
         self.db.add(recommendation)
+        self.db.flush()
         self.events.record(
             EventType.EMERGENCY_PRIORITIZED,
             "La IA heuristica calculo prioridad y ranking de ambulancias.",
             emergency_id=emergency.id,
             ambulance_id=recommendation.recommended_ambulance_id,
-            metadata=recommendation.criteria,
+            metadata={
+                "recommendation_id": recommendation.id,
+                "decision_reason": recommendation.decision_reason,
+                "candidates_count": recommendation.candidates_count,
+                **recommendation.criteria,
+            },
         )
         return recommendation
 
@@ -122,6 +132,15 @@ class RecommendationService:
             "no_candidate_reason": None if best else "No hay ambulancias disponibles o recuperadas para recomendar.",
             "ranking": [self._ranking_item(item) for item in ranked],
         }
+
+    def _decision_reason(self, best: dict | None) -> str:
+        if best is None:
+            return "No hay ambulancias disponibles o recuperadas para recomendar."
+        ambulance = best["ambulance"]
+        return (
+            f"{ambulance.code} fue recomendada por obtener el mayor puntaje total "
+            f"({round(best['total_score'], 2)}) en el ranking heuristico."
+        )
 
     def _ranking_item(self, item: dict | None) -> dict | None:
         if item is None:

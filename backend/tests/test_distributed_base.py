@@ -74,13 +74,22 @@ def test_heuristic_recommendation_prefers_nearest_equivalent_ambulance(client):
     far = create_ambulance(client, "AMB-FAR", "30,0")
     near = create_ambulance(client, "AMB-NEAR", "2,0")
 
-    create_emergency(client, severity=7, location="0,0")
+    emergency = create_emergency(client, severity=7, location="0,0")
 
     recommendation = latest_recommendation(client)
     assert recommendation["recommended_ambulance_id"] == near["id"]
+    assert recommendation["decision_reason"].startswith("AMB-NEAR fue recomendada")
+    assert recommendation["candidates_count"] == 2
     assert recommendation["criteria"]["selected"]["ambulance_id"] == near["id"]
     assert recommendation["criteria"]["ranking"][0]["ambulance_id"] == near["id"]
     assert recommendation["criteria"]["ranking"][1]["ambulance_id"] == far["id"]
+
+    ranking_response = client.get(f"/emergencies/{emergency['id']}/candidate-ranking")
+    assert ranking_response.status_code == 200
+    ranking = ranking_response.json()
+    assert ranking["recommended_ambulance_id"] == near["id"]
+    assert ranking["ranking"][0]["ambulance_id"] == near["id"]
+    assert ranking["ranking"][1]["ambulance_id"] == far["id"]
 
 
 def test_heuristic_recommendation_balances_reliability_and_operational_load(client):
@@ -142,6 +151,8 @@ def test_heuristic_recommendation_records_no_candidate_reason(client):
 
     recommendation = latest_recommendation(client)
     assert recommendation["recommended_ambulance_id"] is None
+    assert recommendation["decision_reason"] == "No hay ambulancias disponibles o recuperadas para recomendar."
+    assert recommendation["candidates_count"] == 0
     assert recommendation["criteria"]["ranking"] == []
     assert recommendation["criteria"]["selected"] is None
     assert recommendation["criteria"]["no_candidate_reason"] == (
@@ -202,6 +213,11 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
     assert first["accepted"] is True
     assert second["accepted"] is False
     assert first["assignment"]["ambulance_id"] == ambulance_a["id"]
+    assert first["assignment"]["recommendation_id"] is not None
+    assert first["assignment"]["recommended_ambulance_id"] == ambulance_a["id"]
+    assert first["assignment"]["assignment_reason"] == (
+        "La ambulancia asignada coincide con la recomendacion heuristica vigente."
+    )
     emergency_row = db_session.get(Emergency, emergency["id"])
     assert emergency_row.state == EmergencyState.ASIGNADA.value
     assert emergency_row.assigned_ambulance_id == ambulance_a["id"]
@@ -216,6 +232,12 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
     ).all()
     assert len(confirmed) == 1
     assert EventType.ASSIGNMENT_REJECTED.value in event_types(db_session)
+
+    trace = client.get(f"/emergencies/{emergency['id']}/trace").json()
+    assert trace["recommended_ambulance_id"] == ambulance_a["id"]
+    assert trace["assigned_ambulance_id"] == ambulance_a["id"]
+    assert trace["assignment_matches_recommendation"] is True
+    assert trace["selected_assignment"]["id"] == first["assignment"]["id"]
 
 
 def test_assignment_rejects_ambulance_with_active_assignment(client, db_session):
@@ -245,6 +267,31 @@ def test_assignment_rejects_ambulance_with_active_assignment(client, db_session)
     assert len(confirmed) == 1
 
 
+def test_trace_records_when_non_recommended_ambulance_wins_distributed_attempt(client):
+    far = create_ambulance(client, "AMB-FAR", "30,0")
+    near = create_ambulance(client, "AMB-NEAR", "0,0")
+    emergency = create_emergency(client, location="0,0")
+    recommendation = latest_recommendation(client)
+    assert recommendation["recommended_ambulance_id"] == near["id"]
+
+    attempt = client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": far["id"]},
+    ).json()
+
+    assert attempt["accepted"] is True
+    assert attempt["assignment"]["ambulance_id"] == far["id"]
+    assert attempt["assignment"]["recommended_ambulance_id"] == near["id"]
+    assert attempt["assignment"]["assignment_reason"] == (
+        "La ambulancia asignada no coincide con la recomendacion heuristica vigente; gano por intento distribuido."
+    )
+    trace = client.get(f"/emergencies/{emergency['id']}/trace").json()
+    assert trace["recommended_ambulance_id"] == near["id"]
+    assert trace["assigned_ambulance_id"] == far["id"]
+    assert trace["assignment_matches_recommendation"] is False
+    assert trace["trace_reason"] == attempt["assignment"]["assignment_reason"]
+
+
 def test_assigned_node_failure_triggers_automatic_reassignment(client, db_session):
     ambulance_a = create_ambulance(client, "AMB-A", "0,0", reliability=1.0)
     ambulance_b = create_ambulance(client, "AMB-B", "1,1", reliability=0.9)
@@ -267,11 +314,21 @@ def test_assigned_node_failure_triggers_automatic_reassignment(client, db_sessio
     )
     assert active_assignment is not None
     assert active_assignment.ambulance_id == ambulance_b["id"]
+    assert active_assignment.recommendation_id is not None
+    assert active_assignment.recommended_ambulance_id == ambulance_b["id"]
+    assert active_assignment.assignment_reason == (
+        "La ambulancia asignada coincide con la recomendacion heuristica vigente."
+    )
     assert db_session.get(Emergency, emergency["id"]).assigned_ambulance_id == ambulance_b["id"]
     refreshed_b = db_session.get(AmbulanceNode, ambulance_b["id"])
     assert refreshed_b.state == AmbulanceState.OCUPADO.value
     assert EventType.REASSIGNMENT_STARTED.value in event_types(db_session)
     assert EventType.REASSIGNMENT_CONFIRMED.value in event_types(db_session)
+
+    trace = client.get(f"/emergencies/{emergency['id']}/trace").json()
+    assert trace["recommended_ambulance_id"] == ambulance_b["id"]
+    assert trace["assigned_ambulance_id"] == ambulance_b["id"]
+    assert trace["assignment_matches_recommendation"] is True
 
 
 def test_node_event_endpoint_records_received_and_processed_events(client, db_session):

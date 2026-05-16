@@ -8,6 +8,7 @@ from app.domain.enums import AmbulanceState, AssignmentState, EmergencyState, Ev
 from app.models.ambulance import AmbulanceNode
 from app.models.assignment import Assignment
 from app.models.emergency import Emergency
+from app.models.recommendation import AIRecommendation
 from app.services.events import EventService
 
 
@@ -94,11 +95,15 @@ class AssignmentService:
             )
             return False, None, "Nodo no disponible"
 
+        recommendation = self._latest_recommendation_for_emergency(emergency.id)
         assignment = Assignment(
             emergency_id=emergency.id,
             ambulance_id=ambulance.id,
+            recommendation_id=recommendation.id if recommendation else None,
+            recommended_ambulance_id=recommendation.recommended_ambulance_id if recommendation else None,
             state=AssignmentState.CONFIRMADA.value,
             active=True,
+            assignment_reason=self._assignment_reason(ambulance, recommendation),
         )
         emergency.state = EmergencyState.EN_PROCESO_ASIGNACION.value
         self.db.add(assignment)
@@ -117,7 +122,13 @@ class AssignmentService:
             f"Asignacion confirmada para {ambulance.code}.",
             emergency_id=emergency.id,
             ambulance_id=ambulance.id,
-            metadata={"assignment_id": assignment.id},
+            metadata={
+                "assignment_id": assignment.id,
+                "recommendation_id": assignment.recommendation_id,
+                "recommended_ambulance_id": assignment.recommended_ambulance_id,
+                "assigned_ambulance_id": assignment.ambulance_id,
+                "assignment_reason": assignment.assignment_reason,
+            },
         )
         return True, assignment, None
 
@@ -155,6 +166,26 @@ class AssignmentService:
             )
             .with_for_update()
         )
+
+    def _latest_recommendation_for_emergency(self, emergency_id: str) -> AIRecommendation | None:
+        return self.db.scalar(
+            select(AIRecommendation)
+            .where(AIRecommendation.emergency_id == emergency_id)
+            .order_by(AIRecommendation.created_at.desc(), AIRecommendation.id.desc())
+        )
+
+    def _assignment_reason(
+        self,
+        ambulance: AmbulanceNode,
+        recommendation: AIRecommendation | None,
+    ) -> str:
+        if recommendation is None:
+            return "Asignacion confirmada sin recomendacion previa registrada."
+        if recommendation.recommended_ambulance_id is None:
+            return "Asignacion confirmada aunque la recomendacion no tenia candidata disponible."
+        if recommendation.recommended_ambulance_id == ambulance.id:
+            return "La ambulancia asignada coincide con la recomendacion heuristica vigente."
+        return "La ambulancia asignada no coincide con la recomendacion heuristica vigente; gano por intento distribuido."
 
     def _reject_unique_assignment_conflict(
         self,

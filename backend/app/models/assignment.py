@@ -14,14 +14,23 @@ class Assignment(Base):
     id: Mapped[str] = uuid_pk()
     emergency_id: Mapped[str] = mapped_column(ForeignKey("emergencies.id"), nullable=False, index=True)
     ambulance_id: Mapped[str] = mapped_column(ForeignKey("ambulance_nodes.id"), nullable=False, index=True)
+    recommendation_id: Mapped[str | None] = mapped_column(ForeignKey("ai_recommendations.id"), nullable=True, index=True)
+    recommended_ambulance_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ambulance_nodes.id"),
+        nullable=True,
+        index=True,
+    )
     state: Mapped[str] = mapped_column(String(40), default=AssignmentState.PENDIENTE.value, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     assigned_at: Mapped[datetime] = utc_created_at()
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     reassignment_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    assignment_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     emergency = relationship("Emergency", back_populates="assignments")
-    ambulance = relationship("AmbulanceNode", back_populates="assignments")
+    ambulance = relationship("AmbulanceNode", foreign_keys=[ambulance_id], back_populates="assignments")
+    recommended_ambulance = relationship("AmbulanceNode", foreign_keys=[recommended_ambulance_id])
+    recommendation = relationship("AIRecommendation", back_populates="assignments")
 
 
 Index(

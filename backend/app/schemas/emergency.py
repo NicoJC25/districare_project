@@ -21,3 +21,14 @@ class EmergencyRead(BaseModel):
     closed_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class EmergencyTraceRead(BaseModel):
+    emergency: EmergencyRead
+    latest_recommendation: dict | None
+    selected_assignment: dict | None
+    recommended_ambulance_id: str | None
+    assigned_ambulance_id: str | None
+    assignment_matches_recommendation: bool | None
+    trace_reason: str
+    events: list[dict]
