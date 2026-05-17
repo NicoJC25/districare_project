@@ -24,6 +24,14 @@ export function DashboardPage({
   ).length;
   const failedNodes = data.ambulances.filter((ambulance) => ["FALLIDO", "INACTIVO"].includes(ambulance.state)).length;
   const latestRecommendation = data.recommendations[0];
+  const emergencyStateCounts = data.emergencies.reduce<Record<string, number>>((acc, emergency) => {
+    acc[emergency.state] = (acc[emergency.state] ?? 0) + 1;
+    return acc;
+  }, {});
+  const ambulanceStateCounts = data.ambulances.reduce<Record<string, number>>((acc, ambulance) => {
+    acc[ambulance.state] = (acc[ambulance.state] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -34,6 +42,15 @@ export function DashboardPage({
         <KpiCard label="Nodos fallidos" value={failedNodes} icon={<TriangleAlert className="h-5 w-5" />} tone="danger" />
         <KpiCard label="Recomendaciones IA" value={data.recommendations.length} icon={<BrainCircuit className="h-5 w-5" />} tone="purple" />
         <KpiCard label="Asignaciones confirmadas" value={data.assignments.length} icon={<ClipboardCheck className="h-5 w-5" />} tone="success" />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <Card title="Emergencias por estado">
+          <StatusSummary values={emergencyStateCounts} />
+        </Card>
+        <Card title="Ambulancias por estado">
+          <StatusSummary values={ambulanceStateCounts} />
+        </Card>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.8fr)]">
@@ -99,6 +116,23 @@ export function DashboardPage({
           )}
         </Card>
       </section>
+    </div>
+  );
+}
+
+function StatusSummary({ values }: { values: Record<string, number> }) {
+  const entries = Object.entries(values);
+  if (entries.length === 0) {
+    return <p className="text-sm text-muted">Sin datos registrados.</p>;
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {entries.map(([status, count]) => (
+        <div key={status} className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-3 py-2">
+          <StatusBadge tone={toneForStatus(status)}>{status}</StatusBadge>
+          <span className="text-sm font-bold tabular-nums text-text">{count}</span>
+        </div>
+      ))}
     </div>
   );
 }

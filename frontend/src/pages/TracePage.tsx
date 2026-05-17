@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { Timeline } from "../components/Timeline";
 import { Button, Card, EmptyState, LoadingState, Select, StatusBadge } from "../components/ui";
@@ -14,9 +15,25 @@ export function TracePage({
   emergencies: Emergency[];
   ambulanceById: Map<string, Ambulance>;
 }) {
-  const [selectedId, setSelectedId] = useState(emergencies[0]?.id ?? "");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const emergencyFromUrl = searchParams.get("emergency") ?? "";
+  const [selectedId, setSelectedId] = useState(emergencyFromUrl || emergencies[0]?.id || "");
   const [trace, setTrace] = useState<EmergencyTrace | null>(null);
   const [loading, setLoading] = useState(false);
+  const reassignmentEvents = useMemo(
+    () => trace?.events.filter((event) => event.event_type === "REASSIGNMENT_STARTED" || event.event_type === "REASSIGNMENT_CONFIRMED") ?? [],
+    [trace],
+  );
+
+  useEffect(() => {
+    if (emergencyFromUrl && emergencyFromUrl !== selectedId) {
+      setSelectedId(emergencyFromUrl);
+      return;
+    }
+    if (!selectedId && emergencies[0]?.id) {
+      setSelectedId(emergencies[0].id);
+    }
+  }, [emergencies, emergencyFromUrl, selectedId]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -33,7 +50,13 @@ export function TracePage({
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
           <label className="flex-1 space-y-1 text-sm font-semibold">
             <span>Seleccionar emergencia</span>
-            <Select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+            <Select
+              value={selectedId}
+              onChange={(event) => {
+                setSelectedId(event.target.value);
+                setSearchParams(event.target.value ? { emergency: event.target.value } : {});
+              }}
+            >
               <option value="">Seleccionar</option>
               {emergencies.map((emergency) => (
                 <option key={emergency.id} value={emergency.id}>
@@ -101,6 +124,22 @@ export function TracePage({
               <p className="rounded-lg bg-surface-muted p-4 text-sm font-medium text-text">{trace.trace_reason}</p>
             </div>
           </Card>
+
+          {reassignmentEvents.length > 0 && (
+            <Card title="Reasignaciones detectadas">
+              <div className="space-y-3">
+                {reassignmentEvents.map((event) => (
+                  <div key={event.id} className="rounded-lg border border-border bg-surface-muted p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <StatusBadge tone={toneForStatus(event.event_type)}>{event.event_type}</StatusBadge>
+                      <span className="text-xs font-medium text-muted">{formatDate(event.created_at)}</span>
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-text">{event.description}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           <Card title="Linea de tiempo de la emergencia">
             <Timeline events={trace.events} />

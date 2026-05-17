@@ -11,7 +11,7 @@ from app.models.event import SystemEvent
 from app.models.recommendation import AIRecommendation
 from app.schemas.ambulance import AmbulanceCreate, AmbulanceRead, HeartbeatRead
 from app.schemas.assignment import AssignmentAttemptCreate, AssignmentAttemptRead, AssignmentRead
-from app.schemas.emergency import EmergencyCreate, EmergencyRead, EmergencyTraceRead
+from app.schemas.emergency import EmergencyCreate, EmergencyRead, EmergencyStateUpdate, EmergencyTraceRead
 from app.schemas.event import NodeEventCreate, SystemEventRead
 from app.schemas.recommendation import AIRecommendationRead, CandidateRankingRead
 from app.services.ambulances import AmbulanceService
@@ -52,6 +52,23 @@ def get_emergency(emergency_id: str, db: Session = Depends(get_db)) -> Emergency
     emergency = db.get(Emergency, emergency_id)
     if emergency is None:
         raise HTTPException(status_code=404, detail="Emergencia no encontrada")
+    return emergency
+
+
+@router.patch("/emergencies/{emergency_id}/state", response_model=EmergencyRead)
+def update_emergency_state(
+    emergency_id: str,
+    payload: EmergencyStateUpdate,
+    db: Session = Depends(get_db),
+) -> Emergency:
+    try:
+        emergency = EmergencyService(db).update_state(emergency_id, payload.state)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    db.commit()
+    db.refresh(emergency)
     return emergency
 
 

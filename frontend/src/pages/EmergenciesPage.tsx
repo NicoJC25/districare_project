@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { DataTable } from "../components/DataTable";
 import { Button, Card, Input, Modal, Select, StatusBadge } from "../components/ui";
@@ -17,6 +18,7 @@ export function EmergenciesPage({
   ambulanceById: Map<string, Ambulance>;
   onRefresh: () => void;
 }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("Accidente");
   const [severity, setSeverity] = useState(7);
@@ -32,6 +34,26 @@ export function EmergenciesPage({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function updateState(emergency: Emergency, state: "EN_ATENCION" | "CERRADA") {
+    const label = state === "EN_ATENCION" ? "iniciar atencion" : "cerrar emergencia";
+    if (!window.confirm(`Confirmar accion: ${label}?`)) return;
+    setBusy(true);
+    try {
+      await api.updateEmergencyState(emergency.id, { state });
+      await onRefresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function canStartAttention(emergency: Emergency) {
+    return emergency.state === "ASIGNADA";
+  }
+
+  function canClose(emergency: Emergency) {
+    return emergency.state === "EN_ATENCION" || emergency.state === "SIN_UNIDAD_DISPONIBLE";
   }
 
   return (
@@ -59,12 +81,31 @@ export function EmergenciesPage({
               cell: (row) => ambulanceById.get(row.assigned_ambulance_id ?? "")?.code ?? shortId(row.assigned_ambulance_id),
             },
             { header: "Fecha", cell: (row) => formatDate(row.created_at) },
+            { header: "Cierre", cell: (row) => row.closed_at ? formatDate(row.closed_at) : "-" },
             {
               header: "Acciones",
-              cell: () => (
-                <Button variant="ghost" className="px-2">
-                  <Eye className="h-4 w-4" />
-                </Button>
+              cell: (row) => (
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="ghost" className="px-2" onClick={() => navigate(`/trazabilidad?emergency=${row.id}`)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="px-3 py-1.5"
+                    disabled={busy || !canStartAttention(row)}
+                    onClick={() => updateState(row, "EN_ATENCION")}
+                  >
+                    Atender
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="px-3 py-1.5"
+                    disabled={busy || !canClose(row)}
+                    onClick={() => updateState(row, "CERRADA")}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
               ),
             },
           ]}

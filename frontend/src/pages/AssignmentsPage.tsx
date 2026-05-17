@@ -52,6 +52,12 @@ export function AssignmentsPage({
               ),
             },
             { header: "Ambulancia", cell: (row) => ambulanceById.get(row.ambulance_id)?.code ?? shortId(row.ambulance_id) },
+            {
+              header: "Vigencia",
+              cell: (row) => (
+                <StatusBadge tone={row.active ? "success" : "default"}>{row.active ? "Activa" : "Historica"}</StatusBadge>
+              ),
+            },
             { header: "Recomendacion", cell: (row) => shortId(row.recommendation_id) },
             {
               header: "Amb. recomendada",
@@ -68,6 +74,7 @@ export function AssignmentsPage({
                 ),
             },
             { header: "Fecha", cell: (row) => formatDate(row.assigned_at) },
+            { header: "Finalizada", cell: (row) => row.finalized_at ? formatDate(row.finalized_at) : "-" },
             { header: "Razon", cell: (row) => <span className="text-sm text-muted">{row.assignment_reason ?? "-"}</span> },
           ]}
         />

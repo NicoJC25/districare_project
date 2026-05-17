@@ -240,6 +240,79 @@ def test_assignment_unique_constraint_rejects_second_attempt(client, db_session)
     assert trace["selected_assignment"]["id"] == first["assignment"]["id"]
 
 
+def test_emergency_state_update_starts_attention_and_records_event(client, db_session):
+    ambulance = create_ambulance(client, "AMB-A", "0,0")
+    emergency = create_emergency(client)
+    client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": ambulance["id"]},
+    )
+
+    response = client.patch(
+        f"/emergencies/{emergency['id']}/state",
+        json={"state": EmergencyState.EN_ATENCION.value},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["state"] == EmergencyState.EN_ATENCION.value
+    assert db_session.get(AmbulanceNode, ambulance["id"]).state == AmbulanceState.EN_ATENCION.value
+    assert EventType.EMERGENCY_STATE_UPDATED.value in event_types(db_session)
+
+
+def test_emergency_close_finalizes_assignment_and_releases_ambulance(client, db_session):
+    ambulance = create_ambulance(client, "AMB-A", "0,0")
+    emergency = create_emergency(client)
+    attempt = client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": ambulance["id"]},
+    ).json()
+    client.patch(
+        f"/emergencies/{emergency['id']}/state",
+        json={"state": EmergencyState.EN_ATENCION.value},
+    )
+
+    response = client.patch(
+        f"/emergencies/{emergency['id']}/state",
+        json={"state": EmergencyState.CERRADA.value},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["state"] == EmergencyState.CERRADA.value
+    assert response.json()["closed_at"] is not None
+    assignment = db_session.get(Assignment, attempt["assignment"]["id"])
+    assert assignment.active is False
+    assert assignment.state == AssignmentState.FINALIZADA.value
+    assert assignment.finalized_at is not None
+    assert db_session.get(AmbulanceNode, ambulance["id"]).state == AmbulanceState.DISPONIBLE.value
+    assert EventType.EMERGENCY_CLOSED.value in event_types(db_session)
+
+
+def test_closed_emergency_rejects_new_assignment_attempt(client):
+    ambulance = create_ambulance(client, "AMB-A", "0,0")
+    second_ambulance = create_ambulance(client, "AMB-B", "1,1")
+    emergency = create_emergency(client)
+    client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": ambulance["id"]},
+    )
+    client.patch(
+        f"/emergencies/{emergency['id']}/state",
+        json={"state": EmergencyState.EN_ATENCION.value},
+    )
+    client.patch(
+        f"/emergencies/{emergency['id']}/state",
+        json={"state": EmergencyState.CERRADA.value},
+    )
+
+    response = client.post(
+        "/assignments/attempt",
+        json={"emergency_id": emergency["id"], "ambulance_id": second_ambulance["id"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"accepted": False, "assignment": None, "reason": "Emergencia no asignable"}
+
+
 def test_assignment_rejects_ambulance_with_active_assignment(client, db_session):
     ambulance = create_ambulance(client, "AMB-A", "0,0")
     emergency_a = create_emergency(client, location="0,0")

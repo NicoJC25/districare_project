@@ -8,6 +8,7 @@ import type {
   CandidateRanking,
   Emergency,
   EmergencyCreate,
+  EmergencyStateUpdate,
   EmergencyTrace,
   HealthStatus,
   SystemEvent,
@@ -39,6 +40,11 @@ export const api = {
   createEmergency: (payload: EmergencyCreate) =>
     request<Emergency>("/emergencies", {
       method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateEmergencyState: (emergencyId: string, payload: EmergencyStateUpdate) =>
+    request<Emergency>(`/emergencies/${emergencyId}/state`, {
+      method: "PATCH",
       body: JSON.stringify(payload),
     }),
   listAmbulances: () => request<Ambulance[]>("/ambulances"),

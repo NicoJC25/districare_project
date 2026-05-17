@@ -6,6 +6,8 @@
 - `.gitignore`: se agregaron salidas generadas del frontend, Electron y logs locales.
 - `frontend/package.json`: se agregaron scripts y configuracion de Electron/electron-builder, incluyendo empaquetado Windows sin firma local.
 - `frontend/vite.config.ts`: se configuro `base: "./"` para cargar assets desde Electron.
+- `backend/app/services/emergencies.py`: se agrego gestion de ciclo de vida para iniciar atencion y cerrar emergencias.
+- `backend/app/api/router.py`: se agrego `PATCH /emergencies/{emergency_id}/state`.
 
 ## Archivos creados
 
@@ -15,6 +17,8 @@
 - `frontend/src/components/`: componentes base reutilizables.
 - `frontend/src/pages/`: paginas iniciales conectadas a API.
 - `frontend/electron/main.cjs`: proceso principal de Electron para abrir el dashboard como app de escritorio.
+- `scripts/seed_demo_data.py`: carga escenarios demo para sustentacion.
+- `docs/fase_5/escenarios_demo.md`: guia de escenarios de concurrencia, reasignacion y cierre.
 - `docs/fase_5/`: documentacion de proceso, diseno, componentes e integracion.
 
 ## Componentes creados
@@ -41,6 +45,12 @@ Frontend:
 cd frontend
 npm install
 npm run dev
+```
+
+Datos demo:
+
+```powershell
+python scripts/seed_demo_data.py
 ```
 
 Aplicacion de escritorio:

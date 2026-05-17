@@ -25,6 +25,7 @@ El origen `null` cubre el caso de Electron en produccion, donde el frontend se c
 - `GET /health`
 - `GET /emergencies`
 - `POST /emergencies`
+- `PATCH /emergencies/{emergency_id}/state`
 - `GET /ambulances`
 - `POST /ambulances`
 - `POST /ambulances/{ambulance_id}/fail`
@@ -50,6 +51,18 @@ Se crearon tipos TypeScript para:
 - `SystemEvent`
 
 Estos tipos reflejan los schemas Pydantic actuales y no agregan campos inexistentes.
+
+El cambio manual de estado usa `EmergencyStateUpdate` y solo acepta:
+
+```json
+{ "state": "EN_ATENCION" }
+```
+
+```json
+{ "state": "CERRADA" }
+```
+
+Reglas principales: una emergencia cerrada no acepta nuevas asignaciones; al cerrar una emergencia asignada se finaliza la asignacion activa y se libera la ambulancia.
 
 ## Manejo de estados
 

@@ -93,6 +93,23 @@ python scripts/run_ambulance_node.py --code AMB-A --location "0,0"
 python scripts/run_ambulance_node.py --code AMB-B --location "5,3"
 ```
 
+Datos demo para sustentacion:
+
+```powershell
+python scripts/seed_demo_data.py
+```
+
+Este script requiere que el backend este activo en `http://127.0.0.1:8000`. Crea escenarios para recomendacion normal, intento distribuido distinto a IA, fallo con reasignacion automatica y emergencia cerrada.
+
+Flujo sugerido de demostracion:
+
+1. Abrir Panel General para ver resumen por estado.
+2. Revisar Recomendaciones IA y ranking de candidatos.
+3. Intentar una asignacion desde Asignaciones y observar aceptados/rechazados.
+4. Marcar fallo en una ambulancia asignada y revisar Trazabilidad.
+5. Iniciar atencion y cerrar una emergencia desde Emergencias.
+6. Confirmar en Eventos del sistema la secuencia completa.
+
 ## Pruebas
 
 ```powershell

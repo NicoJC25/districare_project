@@ -15,6 +15,7 @@ export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: 
   const [load, setLoad] = useState(0);
   const [reliability, setReliability] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   async function createAmbulance() {
     setBusy(true);
@@ -27,19 +28,27 @@ export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: 
     }
   }
 
-  async function failAmbulance(id: string) {
+  async function failAmbulance(ambulance: Ambulance) {
     if (!window.confirm("Marcar esta ambulancia como fallida?")) return;
-    await api.failAmbulance(id);
+    const couldReassign = ["OCUPADO", "ASIGNADA", "EN_ATENCION"].includes(ambulance.state);
+    await api.failAmbulance(ambulance.id);
+    setActionMessage(
+      couldReassign
+        ? "Fallo registrado. Si la unidad tenia una asignacion activa, revisa Trazabilidad para ver la reasignacion automatica."
+        : "Fallo registrado para la unidad seleccionada.",
+    );
     await onRefresh();
   }
 
   async function recoverAmbulance(id: string) {
     await api.recoverAmbulance(id);
+    setActionMessage("Unidad recuperada y disponible para nuevas recomendaciones.");
     await onRefresh();
   }
 
   async function detectStale() {
-    await api.detectStaleNodes();
+    const response = await api.detectStaleNodes();
+    setActionMessage(`Deteccion completada. Nodos inactivos encontrados: ${response.detected_failures}.`);
     await onRefresh();
   }
 
@@ -60,6 +69,7 @@ export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: 
           </div>
         }
       >
+        {actionMessage && <p className="mb-4 rounded-lg bg-surface-muted p-3 text-sm font-medium text-text">{actionMessage}</p>}
         <DataTable<Ambulance>
           rows={data.ambulances}
           getRowKey={(row) => row.id}
@@ -74,7 +84,7 @@ export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: 
               header: "Acciones",
               cell: (row) => (
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="danger" className="px-3 py-1.5" onClick={() => failAmbulance(row.id)}>
+                  <Button variant="danger" className="px-3 py-1.5" onClick={() => failAmbulance(row)}>
                     Fallo
                   </Button>
                   <Button variant="secondary" className="px-3 py-1.5" onClick={() => recoverAmbulance(row.id)}>

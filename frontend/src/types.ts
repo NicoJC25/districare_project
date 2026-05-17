@@ -110,6 +110,10 @@ export type EmergencyCreate = {
   simulated_location: string;
 };
 
+export type EmergencyStateUpdate = {
+  state: "EN_ATENCION" | "CERRADA";
+};
+
 export type AmbulanceCreate = {
   code: string;
   simulated_location: string;

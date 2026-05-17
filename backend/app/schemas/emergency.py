@@ -9,6 +9,10 @@ class EmergencyCreate(BaseModel):
     simulated_location: str
 
 
+class EmergencyStateUpdate(BaseModel):
+    state: str
+
+
 class EmergencyRead(BaseModel):
     id: str
     type: str
