@@ -13,14 +13,33 @@ Base inicial distribuida para el proyecto de Sistemas Distribuidos.
 
 ## Inicio rapido
 
+Infraestructura y backend:
+
 ```powershell
 docker compose -f infrastructure/docker-compose.yml up -d
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 alembic -c backend/alembic.ini upgrade head
-uvicorn app.main:app --app-dir backend --reload
+$env:PYTHONPATH = "backend"
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+El backend queda disponible en `http://127.0.0.1:8000`. Puedes verificarlo con:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+En otra terminal, levanta el frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+El dashboard queda disponible en `http://127.0.0.1:5173`.
 
 PostgreSQL queda expuesto en `localhost:15432` y RabbitMQ en `localhost:5673` para evitar choques con instalaciones locales que ya usen `5432`, `5672` o `15672`, y tambien evitar rangos reservados por Windows. La consola web de RabbitMQ queda en `http://localhost:15673`. Si venias de una ejecucion anterior, reinicia la infraestructura con:
 
