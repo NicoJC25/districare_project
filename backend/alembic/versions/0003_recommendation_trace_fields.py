@@ -1,15 +1,15 @@
 """recommendation trace fields
 
-Revision ID: 0003_recommendation_trace_fields
-Revises: 0002_assignment_confirmation_fields
+Revision ID: 0003_recommend_trace
+Revises: 0002_assignment_confirm
 Create Date: 2026-05-15
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0003_recommendation_trace_fields"
-down_revision = "0002_assignment_confirmation_fields"
+revision = "0003_recommend_trace"
+down_revision = "0002_assignment_confirm"
 branch_labels = None
 depends_on = None
 

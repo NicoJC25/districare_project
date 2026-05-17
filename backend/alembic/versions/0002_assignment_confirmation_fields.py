@@ -1,6 +1,6 @@
 """assignment confirmation fields
 
-Revision ID: 0002_assignment_confirmation_fields
+Revision ID: 0002_assignment_confirm
 Revises: 0001_initial_schema
 Create Date: 2026-05-11
 """
@@ -8,7 +8,7 @@ Create Date: 2026-05-11
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0002_assignment_confirmation_fields"
+revision = "0002_assignment_confirm"
 down_revision = "0001_initial_schema"
 branch_labels = None
 depends_on = None
