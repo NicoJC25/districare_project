@@ -9,5 +9,6 @@ pytest-cache-files-*/
 frontend_stitch_base
 frontend/node_modules/
 frontend/dist/
+frontend/release/
 frontend/*.log
 backend/*.log

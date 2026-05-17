@@ -5,15 +5,20 @@
 El frontend usa `VITE_API_BASE_URL` como URL base. Si no existe, usa:
 
 ```text
-http://localhost:8000
+http://127.0.0.1:8000
 ```
+
+La aplicacion Electron empaqueta solo el frontend y conserva el mismo consumo HTTP. Por eso, antes de abrir el ejecutable, el backend debe estar disponible en `http://127.0.0.1:8000`.
 
 El backend se ajusto con CORS local para permitir:
 
 ```text
 http://localhost:5173
 http://127.0.0.1:5173
+null
 ```
+
+El origen `null` cubre el caso de Electron en produccion, donde el frontend se carga desde `dist/index.html` como archivo local.
 
 ## Endpoints consumidos
 
