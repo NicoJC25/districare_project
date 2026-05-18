@@ -22,7 +22,7 @@ export function EmergenciesPage({
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("Accidente");
   const [severity, setSeverity] = useState(7);
-  const [location, setLocation] = useState("0,0");
+  const [location, setLocation] = useState("4.7110,-74.0721");
   const [busy, setBusy] = useState(false);
 
   async function createEmergency() {
@@ -151,7 +151,7 @@ export function EmergenciesPage({
           </label>
           <label className="block space-y-1 text-sm font-semibold">
             <span>Ubicacion simulada</span>
-            <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ej: 0,0" />
+            <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ej: 4.7110,-74.0721" />
           </label>
         </div>
       </Modal>

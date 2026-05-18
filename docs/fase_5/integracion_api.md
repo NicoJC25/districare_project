@@ -64,6 +64,22 @@ El cambio manual de estado usa `EmergencyStateUpdate` y solo acepta:
 
 Reglas principales: una emergencia cerrada no acepta nuevas asignaciones; al cerrar una emergencia asignada se finaliza la asignacion activa y se libera la ambulancia.
 
+## Ubicacion simulada
+
+El campo `simulated_location` se mantiene como `string` para evitar cambios de base de datos y de contratos existentes, pero desde esta fase se interpreta como coordenadas geograficas:
+
+```text
+latitud,longitud
+```
+
+Ejemplo:
+
+```text
+4.7110,-74.0721
+```
+
+El backend valida rangos basicos de latitud `[-90, 90]` y longitud `[-180, 180]`. La distancia usada por la IA heuristica se calcula en kilometros con formula Haversine. Si la coordenada llega con formato invalido, el sistema usa una distancia fallback de `50 km` para no interrumpir el flujo de recomendacion.
+
 ## Manejo de estados
 
 - `LoadingState`: mientras se cargan datos iniciales.

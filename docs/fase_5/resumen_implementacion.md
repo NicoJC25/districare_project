@@ -8,6 +8,10 @@
 - `frontend/vite.config.ts`: se configuro `base: "./"` para cargar assets desde Electron.
 - `backend/app/services/emergencies.py`: se agrego gestion de ciclo de vida para iniciar atencion y cerrar emergencias.
 - `backend/app/api/router.py`: se agrego `PATCH /emergencies/{emergency_id}/state`.
+- `backend/app/services/location.py`: se cambio la distancia plana `x,y` por coordenadas `latitud,longitud` con formula Haversine en kilometros.
+- `backend/app/services/recommendations.py`: se ajusto la referencia de distancia de la IA a `20 km` para un escenario urbano.
+- `frontend/src/pages/EmergenciesPage.tsx` y `frontend/src/pages/AmbulancesPage.tsx`: se actualizaron valores por defecto y placeholders de ubicacion a coordenadas reales.
+- `scripts/seed_demo_data.py` y `README.md`: se reemplazaron ubicaciones cartesianas por ejemplos de latitud/longitud.
 
 ## Archivos creados
 
@@ -52,6 +56,8 @@ Datos demo:
 ```powershell
 python scripts/seed_demo_data.py
 ```
+
+Las ubicaciones demo usan coordenadas `latitud,longitud` de referencia urbana, por ejemplo `4.7110,-74.0721`.
 
 Aplicacion de escritorio:
 

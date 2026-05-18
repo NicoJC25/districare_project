@@ -9,6 +9,7 @@ from app.models.assignment import Assignment
 from app.models.emergency import Emergency
 from app.models.event import SystemEvent
 from app.messaging.rabbitmq import RabbitMQPublisher
+from app.services.location import parse_location, simulated_distance
 
 
 def create_ambulance(client, code="AMB-A", location="0,0", load=0, reliability=1.0):
@@ -40,6 +41,14 @@ def event_types(db_session):
 
 def latest_recommendation(client):
     return client.get("/recommendations").json()[0]
+
+
+def test_simulated_distance_uses_latitude_longitude_in_kilometers():
+    distance = simulated_distance("4.7110,-74.0721", "4.7110,-74.0621")
+
+    assert parse_location("4.7110,-74.0721") == (4.7110, -74.0721)
+    assert 1.0 < distance < 1.2
+    assert simulated_distance("ubicacion-invalida", "4.7110,-74.0721") == 50.0
 
 
 def test_create_emergency_records_events_recommendation_and_publishes_payload(client, db_session, monkeypatch):
@@ -199,7 +208,7 @@ def test_recover_node_records_event(client, db_session):
 def test_assignment_unique_constraint_rejects_second_attempt(client, db_session):
     ambulance_a = create_ambulance(client, "AMB-A", "0,0")
     ambulance_b = create_ambulance(client, "AMB-B", "2,2")
-    emergency = create_emergency(client)
+    emergency = create_emergency(client, location="0,0")
 
     first = client.post(
         "/assignments/attempt",

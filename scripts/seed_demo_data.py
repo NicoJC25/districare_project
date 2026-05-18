@@ -62,8 +62,8 @@ def main() -> None:
         health = client.get("/health")
         health.raise_for_status()
 
-        normal_ambulance = create_ambulance(client, f"AMB-DEMO-NORMAL-{suffix}", "0,0")
-        normal_emergency = create_emergency(client, "Accidente demo", 8, "1,1")
+        normal_ambulance = create_ambulance(client, f"AMB-DEMO-NORMAL-{suffix}", "4.7110,-74.0721")
+        normal_emergency = create_emergency(client, "Accidente demo", 8, "4.7150,-74.0700")
         normal_recommendation = latest_recommendation_for(client, normal_emergency["id"])
         post(
             client,
@@ -74,19 +74,19 @@ def main() -> None:
             },
         )
 
-        far = create_ambulance(client, f"AMB-DEMO-FAR-{suffix}", "40,0")
-        create_ambulance(client, f"AMB-DEMO-NEAR-{suffix}", "2,0")
-        mismatch_emergency = create_emergency(client, "Intento distribuido demo", 7, "0,0")
+        far = create_ambulance(client, f"AMB-DEMO-FAR-{suffix}", "4.8400,-74.1450")
+        create_ambulance(client, f"AMB-DEMO-NEAR-{suffix}", "4.7030,-74.0600")
+        mismatch_emergency = create_emergency(client, "Intento distribuido demo", 7, "4.7000,-74.0620")
         post(client, "/assignments/attempt", {"emergency_id": mismatch_emergency["id"], "ambulance_id": far["id"]})
 
-        failing = create_ambulance(client, f"AMB-DEMO-FAIL-{suffix}", "0,0", reliability=1.0)
-        create_ambulance(client, f"AMB-DEMO-BACKUP-{suffix}", "1,1", reliability=0.95)
-        failure_emergency = create_emergency(client, "Reasignacion demo", 9, "0,0")
+        failing = create_ambulance(client, f"AMB-DEMO-FAIL-{suffix}", "4.6500,-74.0900", reliability=1.0)
+        create_ambulance(client, f"AMB-DEMO-BACKUP-{suffix}", "4.6550,-74.0830", reliability=0.95)
+        failure_emergency = create_emergency(client, "Reasignacion demo", 9, "4.6520,-74.0880")
         post(client, "/assignments/attempt", {"emergency_id": failure_emergency["id"], "ambulance_id": failing["id"]})
         post(client, f"/ambulances/{failing['id']}/fail")
 
-        closing_ambulance = create_ambulance(client, f"AMB-DEMO-CLOSE-{suffix}", "5,5")
-        closing_emergency = create_emergency(client, "Cierre demo", 6, "5,6")
+        closing_ambulance = create_ambulance(client, f"AMB-DEMO-CLOSE-{suffix}", "4.6097,-74.0817")
+        closing_emergency = create_emergency(client, "Cierre demo", 6, "4.6105,-74.0800")
         post(client, "/assignments/attempt", {"emergency_id": closing_emergency["id"], "ambulance_id": closing_ambulance["id"]})
         patch(client, f"/emergencies/{closing_emergency['id']}/state", {"state": "EN_ATENCION"})
         patch(client, f"/emergencies/{closing_emergency['id']}/state", {"state": "CERRADA"})

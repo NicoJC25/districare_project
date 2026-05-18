@@ -89,8 +89,8 @@ alembic -c backend/alembic.ini upgrade head
 En otra terminal:
 
 ```powershell
-python scripts/run_ambulance_node.py --code AMB-A --location "0,0"
-python scripts/run_ambulance_node.py --code AMB-B --location "5,3"
+python scripts/run_ambulance_node.py --code AMB-A --location "4.7110,-74.0721"
+python scripts/run_ambulance_node.py --code AMB-B --location "4.6500,-74.0900"
 ```
 
 Datos demo para sustentacion:
@@ -125,3 +125,4 @@ pytest
 - [Trazabilidad fase 2](docs/fase_2/trazabilidad_fase_2.md)
 - [Extension IA heuristica](docs/fase_4/heuristica_ia.md)
 - [Trazabilidad de recomendaciones](docs/fase_4/trazabilidad_recomendaciones.md)
+- [Justificacion como sistema distribuido](docs/fase_5/justificacion_sistema_distribuido.md)

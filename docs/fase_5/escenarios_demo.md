@@ -22,6 +22,8 @@ python scripts/seed_demo_data.py
 - Reasignacion automatica: una ambulancia asignada falla y el sistema recomienda/asigna una alternativa.
 - Cierre operativo: una emergencia pasa a `EN_ATENCION` y luego a `CERRADA`.
 
+Las ubicaciones simuladas se registran como `latitud,longitud`. La distancia que aparece en recomendaciones corresponde a kilometros aproximados calculados con Haversine.
+
 ## Recorrido sugerido
 
 1. Abrir Panel General y revisar contadores por estado.

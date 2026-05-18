@@ -20,7 +20,7 @@ class RecommendationService:
         "reliability": 0.15,
         "waiting_time": 0.05,
     }
-    MAX_DISTANCE = 50.0
+    MAX_DISTANCE = 20.0
     MAX_OPERATIONAL_LOAD = 10.0
     MAX_WAITING_SECONDS = 30 * 60
     AVAILABILITY_SCORES = {
@@ -118,7 +118,7 @@ class RecommendationService:
         return {
             "weights": self.WEIGHTS,
             "references": {
-                "max_distance": self.MAX_DISTANCE,
+                "max_distance_km": self.MAX_DISTANCE,
                 "max_operational_load": self.MAX_OPERATIONAL_LOAD,
                 "max_waiting_minutes": self.MAX_WAITING_SECONDS // 60,
                 "availability_scores": self.AVAILABILITY_SCORES,

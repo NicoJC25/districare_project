@@ -11,7 +11,7 @@ import { toneForStatus } from "../utils/status";
 export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: () => void }) {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("AMB-X");
-  const [location, setLocation] = useState("0,0");
+  const [location, setLocation] = useState("4.7110,-74.0721");
   const [load, setLoad] = useState(0);
   const [reliability, setReliability] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -120,7 +120,7 @@ export function AmbulancesPage({ data, onRefresh }: { data: AppData; onRefresh: 
           </label>
           <label className="block space-y-1 text-sm font-semibold">
             <span>Ubicacion inicial</span>
-            <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ej: 5,3" />
+            <Input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Ej: 4.7110,-74.0721" />
           </label>
           <label className="block space-y-2 text-sm font-semibold">
             <span>Carga operativa: {load}/10</span>
