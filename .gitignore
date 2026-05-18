@@ -12,3 +12,4 @@ frontend/dist/
 frontend/release/
 frontend/*.log
 backend/*.log
+script_graficas.py
