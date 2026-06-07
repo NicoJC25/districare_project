@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.security import require_api_key
 from app.models.ambulance import AmbulanceNode
 from app.models.assignment import Assignment
 from app.models.emergency import Emergency
@@ -34,7 +35,10 @@ def health(db: Session = Depends(get_db)) -> dict:
     return {"status": "ok", "service": "districare", "database": "ok"}
 
 
-@router.post("/emergencies", response_model=EmergencyRead, status_code=201)
+protected = Depends(require_api_key)
+
+
+@router.post("/emergencies", response_model=EmergencyRead, status_code=201, dependencies=[protected])
 def create_emergency(payload: EmergencyCreate, db: Session = Depends(get_db)) -> Emergency:
     emergency = EmergencyService(db).create(payload)
     db.commit()
@@ -59,6 +63,7 @@ def get_emergency(emergency_id: str, db: Session = Depends(get_db)) -> Emergency
 def update_emergency_state(
     emergency_id: str,
     payload: EmergencyStateUpdate,
+    _: None = protected,
     db: Session = Depends(get_db),
 ) -> Emergency:
     try:
@@ -131,7 +136,7 @@ def get_emergency_trace(emergency_id: str, db: Session = Depends(get_db)) -> dic
     }
 
 
-@router.post("/ambulances", response_model=AmbulanceRead, status_code=201)
+@router.post("/ambulances", response_model=AmbulanceRead, status_code=201, dependencies=[protected])
 def create_ambulance(payload: AmbulanceCreate, db: Session = Depends(get_db)) -> AmbulanceNode:
     ambulance = AmbulanceService(db).create(payload)
     db.commit()
@@ -144,7 +149,7 @@ def list_ambulances(db: Session = Depends(get_db)) -> list[AmbulanceNode]:
     return list(db.scalars(select(AmbulanceNode).order_by(AmbulanceNode.code)).all())
 
 
-@router.post("/ambulances/{ambulance_id}/heartbeat", response_model=HeartbeatRead)
+@router.post("/ambulances/{ambulance_id}/heartbeat", response_model=HeartbeatRead, dependencies=[protected])
 def heartbeat(ambulance_id: str, db: Session = Depends(get_db)) -> dict:
     try:
         ambulance, recovered = AmbulanceService(db).heartbeat(ambulance_id)
@@ -155,7 +160,7 @@ def heartbeat(ambulance_id: str, db: Session = Depends(get_db)) -> dict:
     return {"ambulance": ambulance, "recovered": recovered}
 
 
-@router.post("/ambulances/{ambulance_id}/fail", status_code=201)
+@router.post("/ambulances/{ambulance_id}/fail", status_code=201, dependencies=[protected])
 def fail_ambulance(ambulance_id: str, db: Session = Depends(get_db)) -> dict:
     try:
         failure = FailureService(db).fail_node(ambulance_id, "MANUAL", "Fallo manual desde API")
@@ -165,7 +170,7 @@ def fail_ambulance(ambulance_id: str, db: Session = Depends(get_db)) -> dict:
     return {"failure_id": failure.id}
 
 
-@router.post("/ambulances/{ambulance_id}/recover", response_model=AmbulanceRead)
+@router.post("/ambulances/{ambulance_id}/recover", response_model=AmbulanceRead, dependencies=[protected])
 def recover_ambulance(ambulance_id: str, db: Session = Depends(get_db)) -> AmbulanceNode:
     try:
         ambulance = AmbulanceService(db).recover(ambulance_id)
@@ -180,6 +185,7 @@ def recover_ambulance(ambulance_id: str, db: Session = Depends(get_db)) -> Ambul
 def report_node_event(
     ambulance_id: str,
     payload: NodeEventCreate,
+    _: None = protected,
     db: Session = Depends(get_db),
 ) -> SystemEvent:
     try:
@@ -191,7 +197,7 @@ def report_node_event(
     return event
 
 
-@router.post("/assignments/attempt", response_model=AssignmentAttemptRead)
+@router.post("/assignments/attempt", response_model=AssignmentAttemptRead, dependencies=[protected])
 def attempt_assignment(payload: AssignmentAttemptCreate, db: Session = Depends(get_db)) -> dict:
     accepted, assignment, reason = AssignmentService(db).attempt_assignment(
         payload.emergency_id,
@@ -206,7 +212,7 @@ def list_assignments(db: Session = Depends(get_db)) -> list[Assignment]:
     return list(db.scalars(select(Assignment).order_by(Assignment.assigned_at.desc())).all())
 
 
-@router.post("/failures/detect-stale")
+@router.post("/failures/detect-stale", dependencies=[protected])
 def detect_stale_nodes(db: Session = Depends(get_db)) -> dict:
     failures = FailureService(db).detect_stale_nodes()
     db.commit()

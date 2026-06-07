@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import datetime
 
 import httpx
@@ -55,10 +56,12 @@ def latest_recommendation_for(client: httpx.Client, emergency_id: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Carga escenarios demo para DistriCare.")
     parser.add_argument("--api", default="http://127.0.0.1:8000", help="URL base de FastAPI.")
+    parser.add_argument("--api-key", default=os.getenv("API_KEY"), help="API key para endpoints protegidos.")
     args = parser.parse_args()
 
     suffix = datetime.now().strftime("%H%M%S")
-    with httpx.Client(base_url=args.api, timeout=10.0) as client:
+    headers = {"X-API-Key": args.api_key} if args.api_key else {}
+    with httpx.Client(base_url=args.api, headers=headers, timeout=10.0) as client:
         health = client.get("/health")
         health.raise_for_status()
 

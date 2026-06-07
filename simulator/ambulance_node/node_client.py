@@ -6,13 +6,26 @@ logger = logging.getLogger(__name__)
 
 
 class AmbulanceNodeClient:
-    def __init__(self, api_url: str, code: str, location: str, load: int, reliability: float):
+    def __init__(
+        self,
+        api_url: str,
+        code: str,
+        location: str,
+        load: int,
+        reliability: float,
+        api_key: str | None = None,
+    ):
         self.api_url = api_url.rstrip("/")
         self.code = code
         self.location = location
         self.load = load
         self.reliability = reliability
+        self.api_key = api_key
         self.ambulance_id: str | None = None
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"X-API-Key": self.api_key} if self.api_key else {}
 
     def check_backend(self) -> None:
         try:
@@ -31,6 +44,7 @@ class AmbulanceNodeClient:
         self.check_backend()
         response = httpx.post(
             f"{self.api_url}/ambulances",
+            headers=self.headers,
             json={
                 "code": self.code,
                 "simulated_location": self.location,
@@ -47,7 +61,11 @@ class AmbulanceNodeClient:
     def heartbeat(self) -> None:
         if not self.ambulance_id:
             self.register()
-        response = httpx.post(f"{self.api_url}/ambulances/{self.ambulance_id}/heartbeat", timeout=5)
+        response = httpx.post(
+            f"{self.api_url}/ambulances/{self.ambulance_id}/heartbeat",
+            headers=self.headers,
+            timeout=5,
+        )
         response.raise_for_status()
 
     def attempt_assignment(self, emergency_id: str) -> dict:
@@ -55,6 +73,7 @@ class AmbulanceNodeClient:
             self.register()
         response = httpx.post(
             f"{self.api_url}/assignments/attempt",
+            headers=self.headers,
             json={"emergency_id": emergency_id, "ambulance_id": self.ambulance_id},
             timeout=5,
         )
@@ -75,6 +94,7 @@ class AmbulanceNodeClient:
             self.register()
         response = httpx.post(
             f"{self.api_url}/ambulances/{self.ambulance_id}/node-events",
+            headers=self.headers,
             json={
                 "stage": stage,
                 "emergency_id": emergency_id,

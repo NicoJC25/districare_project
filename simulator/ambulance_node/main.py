@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 import time
 
 import pika
@@ -21,6 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--load", type=int, default=0)
     parser.add_argument("--reliability", type=float, default=1.0)
     parser.add_argument("--heartbeat-interval", type=int, default=5)
+    parser.add_argument("--api-key", default=os.getenv("API_KEY"))
     parser.add_argument("--accept-all", action="store_true", help="Intenta aceptar cualquier emergencia publicada.")
     return parser
 
@@ -80,7 +82,14 @@ def consume_events(client: AmbulanceNodeClient, accept_all: bool) -> None:
 
 def main() -> None:
     args = build_parser().parse_args()
-    client = AmbulanceNodeClient(args.api_url, args.code, args.location, args.load, args.reliability)
+    client = AmbulanceNodeClient(
+        args.api_url,
+        args.code,
+        args.location,
+        args.load,
+        args.reliability,
+        args.api_key,
+    )
     client.register()
     heartbeat = HeartbeatLoop(client, args.heartbeat_interval)
     heartbeat.start()

@@ -51,6 +51,22 @@ def test_simulated_distance_uses_latitude_longitude_in_kilometers():
     assert simulated_distance("ubicacion-invalida", "4.7110,-74.0721") == 50.0
 
 
+def test_protected_write_endpoint_rejects_invalid_api_key(client):
+    response = client.post(
+        "/ambulances",
+        headers={"X-API-Key": "clave-incorrecta"},
+        json={
+            "code": "AMB-SEC",
+            "simulated_location": "0,0",
+            "operational_load": 0,
+            "reliability": 1.0,
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "API key invalida o ausente."
+
+
 def test_create_emergency_records_events_recommendation_and_publishes_payload(client, db_session, monkeypatch):
     published = {}
     monkeypatch.setattr(

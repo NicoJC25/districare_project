@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import models  # noqa: F401
 from app.api.router import router
+from app.core.config import settings
 from app.db.session import Base, get_db
 from app.main import app
 from app.messaging.rabbitmq import RabbitMQPublisher
@@ -35,6 +36,6 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
+    with TestClient(app, headers={"X-API-Key": settings.api_key}) as test_client:
         yield test_client
     app.dependency_overrides.clear()
