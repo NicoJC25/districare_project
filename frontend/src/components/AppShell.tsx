@@ -12,7 +12,6 @@ import {
   Siren,
 } from "lucide-react";
 import { Button } from "./ui";
-import { api } from "../api/client";
 
 const navItems = [
   { to: "/", label: "Panel General", icon: LayoutDashboard },
@@ -72,7 +71,6 @@ export function AppShell({
             );
           })}
         </nav>
-        <p className="rounded-lg bg-white/5 p-3 text-xs text-slate-300">API base: {api.baseUrl}</p>
       </aside>
 
       <div className="md:pl-[260px]">
