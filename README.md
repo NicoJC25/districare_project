@@ -30,17 +30,17 @@ Variables principales:
 - `API_KEY`: clave requerida en `X-API-Key` para endpoints de escritura.
 - `ENABLE_API_DOCS`: `true` en desarrollo, `false` en produccion.
 
-El frontend usa variables Vite:
+El frontend llama a la API usando una ruta relativa `/api` por defecto. En desarrollo, Vite actua como proxy hacia el backend:
 
 ```powershell
 cd frontend
 @"
-VITE_API_BASE_URL=http://127.0.0.1:8000
-VITE_API_KEY=tu-api-key-local
+API_PROXY_TARGET=http://127.0.0.1:8000
+API_KEY=tu-api-key-local
 "@ | Out-File -Encoding utf8 .env.local
 ```
 
-`VITE_API_KEY` queda embebida en el build del navegador. Para esta v1 funciona como barrera simple; no reemplaza un sistema de login real.
+No uses `VITE_API_KEY`: las variables con prefijo `VITE_` quedan embebidas en el build del navegador. La clave debe quedarse en un proxy, backend-for-frontend o reverse proxy que agregue `X-API-Key` del lado servidor.
 
 ## Desarrollo local
 
@@ -115,9 +115,9 @@ cd frontend
 npm run build
 ```
 
-## Despliegue gratuito sugerido
+## Despliegue sugerido
 
-- Frontend: Vercel.
+- Frontend: sitio estatico detras de un reverse proxy o backend-for-frontend.
 - Backend: Render Free Web Service ejecutando Uvicorn.
 - PostgreSQL: Supabase Free.
 - RabbitMQ: CloudAMQP Little Lemur Free.
@@ -129,7 +129,7 @@ APP_ENV=production
 DATABASE_URL=<connection-string-supabase>
 RABBITMQ_URL=<amqp-url-cloudamqp>
 RABBITMQ_EXCHANGE=districare.events
-BACKEND_CORS_ORIGINS=https://tu-frontend.vercel.app
+BACKEND_CORS_ORIGINS=https://tu-frontend.example.com
 API_KEY=<clave-larga-y-unica>
 ENABLE_API_DOCS=false
 ```
@@ -142,11 +142,13 @@ alembic -c backend/alembic.ini upgrade head
 python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
 ```
 
-En Vercel configura:
+Para desplegar el frontend como sitio estatico, publica el dashboard detras de un reverse proxy o backend-for-frontend que exponga `/api/*`, reenvie al backend real y agregue `X-API-Key` del lado servidor. Evita configurar `VITE_API_BASE_URL` con una URL publica salvo que aceptes que el navegador muestre ese host en Network.
+
+Ejemplo de variables para un proxy de frontend:
 
 ```text
-VITE_API_BASE_URL=https://tu-backend.onrender.com
-VITE_API_KEY=<misma-api-key>
+API_PROXY_TARGET=https://tu-backend.onrender.com
+API_KEY=<misma-api-key>
 ```
 
 Render Free puede dormir por inactividad y generar cold starts. Para una demo o primera version publica ligera es aceptable; para uso continuo conviene migrar a un plan pago o VPS.
